@@ -19,6 +19,14 @@ public class ESTASolver {
     public static void main(String[] args) {
         ESTASolver solver = new ESTASolver();
 
+        lostMessagesCount = solver.getLostMessagesCount();
+        // Print the number of messages that are lost
+        System.out.println(lostMessagesCount);
+
+    }
+
+    private int getLostMessagesCount(){
+
         // Titles for the FEL
         System.out.println("EventName" + "\t" + "EventStatus" + "\t" + "EventTime");
 
@@ -158,7 +166,6 @@ public class ESTASolver {
             }
         }
 
-        // Print the number of messages that are lost
-        System.out.println(lostMessagesCount);
+        return lostMessagesCount;
     }
 }
