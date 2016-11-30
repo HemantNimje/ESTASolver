@@ -49,24 +49,23 @@ public class ESTASolver {
         // Print the average number of messages that are lost
         //System.out.println("Average number of lost messages: " + avgLostMessagesCount);
 
-
+        // Perform 10000 simulations to calculate the average number of lost messages, total lost messages,
+        // total sent messages, probability of message being lost
         for (int i = 0; i < 10000; i++) {
             lostMessagesCount = solver.getLostMessagesCount();
         }
         avgLostMessagesCount = lostMessagesCount / 10000;
 
         System.out.println("Average number of lost messages: " + avgLostMessagesCount);
-
         System.out.println("Total lost messages: " + lostMessagesCount);
         System.out.println("Total sent messages: " + totalMessagesSent);
-
         System.out.println("Probability of a message being lost: " + ((double) lostMessagesCount / totalMessagesSent));
-
 
         lostMessagesCount = 0;
         totalMessagesSent = 0;
 
         //EXERCISE 3
+        // Perform 1000 simulations to compute control variable C
         for (int i = 0; i < 1000; i++) {
             lostMessagesCount = solver.getLostMessagesCount();
             lostMessages[i] = lostMessagesCount;
@@ -76,16 +75,20 @@ public class ESTASolver {
         System.out.println("\nTotal lost messages: " + lostMessagesCount);
         System.out.println("Total sent messages: " + totalMessagesSent);
 
+        // Create univariate objects to store the array of lost messages and total sent messages
         Univariate uLostMessages = new Univariate(lostMessages);
         Univariate uSentMessages = new Univariate(sentMessages);
 
+        // Use StatFunction.cov to calculate the covariance
         coVariance = StatFunctions.cov(uLostMessages, uSentMessages);
 
+        // Calculate the variance for further calculations
         variance = uSentMessages.variance();
 
         //Mue - average number of messages sent
         avgSentMessages = totalMessagesSent / 1000;
 
+        // Calculate the value of control variable i.e. constant C
         constantC = coVariance / variance;
 
         System.out.println("Covariance: " + coVariance);
@@ -95,7 +98,6 @@ public class ESTASolver {
 
         lostMessagesCount = 0;
         totalMessagesSent = 0;
-
 
         // IMC implementation using the R script provided by prof. Todd
         for(int i = 0; i< 10000; i++){
@@ -111,7 +113,8 @@ public class ESTASolver {
         se = Math.sqrt(sigmasq/10000);
         re = se / lambda;
 
-        msgLostProbability = (double) sum / totalMessagesSent;
+        // Calculate the probability of messages being lost
+        msgLostProbability = (double) lostMessagesCount / totalMessagesSent;
 
         // Average number of lost messages
         avgLostMessages = lostMessagesCount / 10000;
@@ -128,6 +131,7 @@ public class ESTASolver {
 
     }
 
+    // Calculate and return the total number of lost messages using ESTA algorithm
     private long getLostMessagesCount() {
 
         // Titles for the FEL
@@ -141,10 +145,13 @@ public class ESTASolver {
         // Create and insert Arrival events to the FEL
         while (eventOccurrenceTime <= timeLimit) {
 
+            // calculate the time between two event occurrences using uniform distribution
+            // Use this time estimation to decide the arrival of the events
             double U = new UniformRealDistribution().sample();
             double x = ((Math.log(1 / (1 - U))) / 2) * 60;
             eventOccurrenceTime += (int) x;
 
+            // Add arrival events to the priority queue
             if (eventOccurrenceTime <= timeLimit) {
                 Event eArrive = new Event(eventNumber, "A", eventOccurrenceTime);
                 eventNumber += 1;
@@ -166,13 +173,16 @@ public class ESTASolver {
         // Till the time reach limit of 100 hours i.e 6000 minutes and add the good weather and bad weather which will
         // be required for further operations on priority queue
         while (currentTime < timeLimit) {
+            // if weather is good calculate the time of the badWeather event
             if (goodWeather) {
                 eventPriorityQueue.add(new Event(0, "GW", currentTime));
                 currentTime += (int) new NormalDistribution(90, 10).sample();
                 //eventPriorityQueue.add(new Event(0,"BW",currentTime));
                 goodWeather = false;
                 badWeather = true;
-            } else if (badWeather) {
+            }
+            // if weather is bad calculate the time of the goodWeather event
+            else if (badWeather) {
                 eventPriorityQueue.add(new Event(0, "BW", currentTime));
                 currentTime += ((int) new NormalDistribution(60, 20).sample());
                 //eventPriorityQueue.add(new Event(0,"GW",currentTime));
@@ -187,6 +197,7 @@ public class ESTASolver {
         goodWeather = true;
         badWeather = false;
 
+        // total number of the sent messages
         totalMessagesSent += eventPriorityQueue.size();
 
         // Create and insert Leave events along with the arrive events to the FEL
@@ -203,7 +214,9 @@ public class ESTASolver {
                 eventPriorityQueue.poll();
                 badWeather = true;
                 goodWeather = false;
-            } else {
+            }
+            // Create the Depart event based on the processing time
+            else {
                 // get the top event from the priority queue
                 Event currentEvent = eventPriorityQueue.poll();
 
@@ -251,6 +264,7 @@ public class ESTASolver {
                             FEL.add(currentEvent);
                             FEL.add(eDepart);
 
+                            // Once any event is processed change the channel status to busy by making it unavailable 
                             if (isChannel1Available) {
                                 isChannel1Available = false;
                             } else if (isChannel2Available) {
