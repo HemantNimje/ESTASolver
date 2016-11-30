@@ -1,3 +1,5 @@
+import cc.mallet.util.*;
+import cc.mallet.util.Univariate;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
@@ -15,11 +17,26 @@ public class ESTASolver {
     private static boolean isChannel1Available = true;
     private static boolean isChannel2Available = true;
     private static boolean isChannel3Available = true;
-    private static int lostMessagesCount = 0;
-    private static int avgLostMessagesCount = 0;
+    private static long lostMessagesCount = 0;
+    private static long avgLostMessagesCount = 0;
     private static int x = 0;
-    private static int n = 10000;
-    private static int sum = 0;
+    private static long sum = 0;
+    private static long sumsq = 0;
+    private static long totalMessagesSent = 0;
+    private static double msgLostProbability;
+    private static double[] lostMessages = new double[10000];
+    private static double[] sentMessages = new double[10000];
+    private static double coVariance = 0;
+    private static double variance = 0;
+    private static double avgLostMessages = 0;
+    private static double lambda = 0;
+    private static double sigmasq = 0;
+    private static double se = 0;
+    private static double re = 0;
+    private static double avgSentMessages;
+    private static double constantC;
+    private static double z = 0;
+    private static double zSum = 0;
 
     public static void main(String args[]) throws IOException {
         ESTASolver solver = new ESTASolver();
@@ -33,21 +50,88 @@ public class ESTASolver {
         //System.out.println("Average number of lost messages: " + avgLostMessagesCount);
 
 
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < 10000; i++) {
             lostMessagesCount = solver.getLostMessagesCount();
-            //x = solver.getLostMessagesCount();
-            //sum = sum + lostMessages;
         }
-        avgLostMessagesCount = lostMessagesCount / n;
-        
+        avgLostMessagesCount = lostMessagesCount / 10000;
+
         System.out.println("Average number of lost messages: " + avgLostMessagesCount);
+
+        System.out.println("Total lost messages: " + lostMessagesCount);
+        System.out.println("Total sent messages: " + totalMessagesSent);
+
+        System.out.println("Probability of a message being lost: " + ((double) lostMessagesCount / totalMessagesSent));
+
+
+        lostMessagesCount = 0;
+        totalMessagesSent = 0;
+
+        //EXERCISE 3
+        for (int i = 0; i < 1000; i++) {
+            lostMessagesCount = solver.getLostMessagesCount();
+            lostMessages[i] = lostMessagesCount;
+            sentMessages[i] = totalMessagesSent;
+        }
+
+        System.out.println("\nTotal lost messages: " + lostMessagesCount);
+        System.out.println("Total sent messages: " + totalMessagesSent);
+
+        Univariate uLostMessages = new Univariate(lostMessages);
+        Univariate uSentMessages = new Univariate(sentMessages);
+
+        coVariance = StatFunctions.cov(uLostMessages, uSentMessages);
+
+        variance = uSentMessages.variance();
+
+        //Mue - average number of messages sent
+        avgSentMessages = totalMessagesSent / 1000;
+
+        constantC = coVariance / variance;
+
+        System.out.println("Covariance: " + coVariance);
+        System.out.println("Variance: " + variance);
+        System.out.println("Mue: " + avgSentMessages);
+        System.out.println("Constant C: " + constantC);
+
+        lostMessagesCount = 0;
+        totalMessagesSent = 0;
+
+
+        // IMC implementation using the R script provided by prof. Todd
+        for(int i = 0; i< 10000; i++){
+            lostMessagesCount = solver.getLostMessagesCount();
+            sum = lostMessagesCount;
+            sumsq = lostMessagesCount * lostMessagesCount;
+            z = lostMessagesCount + constantC * (totalMessagesSent - avgSentMessages);
+            zSum = zSum + z;
+        }
+
+        lambda = (sum / 10000);
+        sigmasq = (sumsq + (lambda * lambda * 10000))/(10000-1);
+        se = Math.sqrt(sigmasq/10000);
+        re = se / lambda;
+
+        msgLostProbability = (double) sum / totalMessagesSent;
+
+        // Average number of lost messages
+        avgLostMessages = lostMessagesCount / 10000;
+
+        System.out.println("\nAverage number of lost messages: "+avgLostMessages);
+        System.out.println("Total lost messages: "+ lostMessagesCount);
+        System.out.println("Total sent messsages: "+ totalMessagesSent);
+        System.out.println("Probability of messages being lost: "+ msgLostProbability);
+        System.out.println("\nSample mean: "+lambda);
+        System.out.println("Sample variance: "+sigmasq);
+        System.out.println("Standard error: "+se);
+        System.out.println("Relative error: "+re);
+        System.out.println("New value of Z: "+zSum);
 
     }
 
-    private int getLostMessagesCount() {
+    private long getLostMessagesCount() {
 
         // Titles for the FEL
-        //System.out.println("EventName" + "\t" + "EventStatus" + "\t" + "EventTime");
+        /*System.out.println("EventName" + "\t" + "EventStatus" + "\t" + "EventTime");*/
 
         // Create priority queue to maintain future event list
         PriorityQueue<Event> eventPriorityQueue = new PriorityQueue<>();
@@ -103,6 +187,8 @@ public class ESTASolver {
         goodWeather = true;
         badWeather = false;
 
+        totalMessagesSent += eventPriorityQueue.size();
+
         // Create and insert Leave events along with the arrive events to the FEL
         while (!eventPriorityQueue.isEmpty()) {
 
@@ -118,10 +204,8 @@ public class ESTASolver {
                 badWeather = true;
                 goodWeather = false;
             } else {
-
                 // get the top event from the priority queue
                 Event currentEvent = eventPriorityQueue.poll();
-
 
                 // If the event is arrival then check whether any channel is available or not.
                 // If channel is available then calculate the processing time depending on the good weather or bad weather
@@ -202,6 +286,4 @@ public class ESTASolver {
         }
         return lostMessagesCount;
     }
-
-   
 }

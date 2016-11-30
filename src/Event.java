@@ -1,10 +1,11 @@
 /**
- * Created by nimje on 11/28/2016.
+ * Author: Hemant Nimje
+ * File created on 11/28/2016.
  */
 public class Event implements Comparable<Event>{
-    int eventNumber;
-    String eventStatus;
-    int time;
+    public int eventNumber;
+    public String eventStatus;
+    public int time;
 
     public Event(int eventNumber, String eventStatus, int time) {
         this.eventNumber = eventNumber;
